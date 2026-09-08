@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../supabase";
 
-const BG = {
-  width: "100vw", minHeight: "100vh",
-  background: "linear-gradient(160deg, #0a0015 0%, #150025 60%, #001530 100%)",
-  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-  gap: 24, padding: 24, fontFamily: "system-ui,sans-serif",
-};
-
 export default function AuthPage() {
   const [mode, setMode] = useState("login"); // "login" | "signup" | "reset"
   const [email, setEmail] = useState("");
@@ -26,7 +19,7 @@ export default function AuthPage() {
           redirectTo: `${window.location.origin}/`,
         });
         if (error) throw error;
-        setInfo("Password reset email sent! Check your inbox.");
+        setInfo("✅ Reset link sent! Check your inbox.");
         setLoading(false); return;
       }
       if (mode === "signup") {
@@ -47,120 +40,127 @@ export default function AuthPage() {
     }
   }
 
-  const inputStyle = {
-    width: "100%", padding: "13px 16px",
-    background: "#0d0020", border: "2px solid #FFD70033",
-    borderRadius: 12, color: "#e2e8f0", fontSize: 15,
-    outline: "none", fontFamily: "inherit",
-    transition: "border-color .2s",
+  const inp = {
+    width: "100%", padding: "14px 16px",
+    background: "#FFFFFF", border: "2px solid #E5E7EB",
+    borderRadius: 14, color: "#111827", fontSize: 15,
+    outline: "none", fontFamily: "inherit", transition: "border-color .2s",
   };
 
+  const titles = { login: "Welcome back!", signup: "Create account", reset: "Reset password" };
+  const btnText = { login: "🌍 Sign In", signup: "🚀 Create Account", reset: "📧 Send Reset Link" };
+
   return (
-    <div style={BG}>
+    <div style={{
+      width: "100vw", minHeight: "100vh",
+      background: "linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #be185d 100%)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      padding: 24, fontFamily: "'Segoe UI',system-ui,sans-serif",
+    }}>
       <style>{`
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        input:focus{border-color:#FFD700 !important;}
-        button:hover:not(:disabled){filter:brightness(1.12);}
-        button:active:not(:disabled){transform:scale(0.97);}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+        input:focus{border-color:#15803D !important; box-shadow: 0 0 0 3px #15803D22 !important;}
+        button:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px);}
+        button:active:not(:disabled){transform:scale(0.97)translateY(0);}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
       `}</style>
 
-      {/* Logo */}
-      <div style={{ textAlign: "center", animation: "fadeIn .5s ease-out" }}>
-        <div style={{ fontSize: 56, filter: "drop-shadow(0 0 24px #FFD700)" }}>🌍</div>
-        <h1 style={{ color: "#FFD700", fontSize: 28, fontWeight: 900, letterSpacing: 1, marginTop: 8 }}>
+      {/* Hero */}
+      <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeUp .5s ease-out" }}>
+        <div style={{ fontSize: 64, filter: "drop-shadow(0 4px 20px #00000044)", marginBottom: 8 }}>🌍</div>
+        <h1 style={{ color: "#FFFFFF", fontSize: 32, fontWeight: 900, letterSpacing: 1 }}>
           World Biz Tycoon
         </h1>
-        <p style={{ color: "#ffffff55", fontSize: 13, marginTop: 6 }}>
-          2-player global Monopoly
+        <p style={{ color: "#ffffff88", fontSize: 14, marginTop: 6 }}>
+          2-player global Monopoly · Buy nations · Build your empire
         </p>
       </div>
 
-      {/* Form card */}
+      {/* Card */}
       <div style={{
-        width: "100%", maxWidth: 360,
-        background: "#0d0020", border: "1px solid #FFD70022",
-        borderRadius: 20, padding: "28px 24px",
-        animation: "fadeIn .6s ease-out",
+        width: "100%", maxWidth: 380,
+        background: "#FFFFFF", borderRadius: 24,
+        padding: "32px 28px",
+        boxShadow: "0 24px 80px #00000033",
+        animation: "fadeUp .6s ease-out",
       }}>
-        <h2 style={{ color: "#fff", fontSize: 18, fontWeight: 800, marginBottom: 20, textAlign: "center" }}>
-          {mode === "login" ? "Welcome back" : mode === "signup" ? "Create account" : "Reset password"}
+        <h2 style={{ color: "#111827", fontSize: 20, fontWeight: 800, marginBottom: 22, textAlign: "center" }}>
+          {titles[mode]}
         </h2>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {mode === "signup" && (
-            <input
-              type="text"
-              placeholder="Display name (e.g. Alex)"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              style={inputStyle}
-              required
-            />
+            <input type="text" placeholder="Your name (e.g. Alex)" value={displayName}
+              onChange={e => setDisplayName(e.target.value)} style={inp} required />
           )}
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={inputStyle}
-            required
-          />
+          <input type="email" placeholder="Email address" value={email}
+            onChange={e => setEmail(e.target.value)} style={inp} required />
           {mode !== "reset" && (
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              style={inputStyle}
-              required
-              minLength={6}
-            />
+            <input type="password" placeholder="Password (min 6 chars)" value={password}
+              onChange={e => setPassword(e.target.value)} style={inp} required minLength={6} />
           )}
 
           {error && (
-            <div style={{ color: "#f87171", fontSize: 13, textAlign: "center", padding: "6px 0" }}>
+            <div style={{
+              background: "#FEF2F2", border: "1px solid #FECACA",
+              borderRadius: 10, padding: "10px 14px", color: "#DC2626", fontSize: 13,
+            }}>
               {error}
             </div>
           )}
           {info && (
-            <div style={{ color: "#34d399", fontSize: 13, textAlign: "center", padding: "6px 0" }}>
+            <div style={{
+              background: "#F0FDF4", border: "1px solid #BBF7D0",
+              borderRadius: 10, padding: "10px 14px", color: "#15803D", fontSize: 13,
+            }}>
               {info}
             </div>
           )}
 
           <button type="submit" disabled={loading} style={{
-            width: "100%", padding: "14px",
-            background: loading ? "#FFD70066" : "#FFD700",
-            color: "#000", border: "none", borderRadius: 50,
-            fontSize: 15, fontWeight: 900, cursor: loading ? "default" : "pointer",
-            boxShadow: "0 0 24px #FFD70055",
-            marginTop: 4,
+            width: "100%", padding: "15px",
+            background: loading ? "#9CA3AF" : "linear-gradient(135deg, #15803D 0%, #16A34A 100%)",
+            color: "#fff", border: "none", borderRadius: 50,
+            fontSize: 16, fontWeight: 900, cursor: loading ? "default" : "pointer",
+            boxShadow: loading ? "none" : "0 4px 20px #15803D44",
+            marginTop: 4, transition: "all .2s",
           }}>
-            {loading ? "..." : mode === "login" ? "🌍 Sign In" : mode === "signup" ? "🚀 Create Account" : "📧 Send Reset Link"}
+            {loading ? "Please wait…" : btnText[mode]}
           </button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* Links */}
+        <div style={{ marginTop: 18, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
           {mode === "login" && (
             <>
-              <button onClick={() => { setMode("signup"); setError(""); setInfo(""); }}
-                style={{ background: "none", border: "none", color: "#00F5FF", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
-                No account? Sign up
+              <button onClick={() => { setMode("signup"); setError(""); setInfo(""); }} style={{
+                background: "none", border: "none", color: "#2563EB",
+                fontSize: 14, cursor: "pointer", fontWeight: 600,
+              }}>
+                No account yet? Sign up →
               </button>
-              <button onClick={() => { setMode("reset"); setError(""); setInfo(""); }}
-                style={{ background: "none", border: "none", color: "#ffffff44", fontSize: 12, cursor: "pointer" }}>
+              <button onClick={() => { setMode("reset"); setError(""); setInfo(""); }} style={{
+                background: "none", border: "none", color: "#9CA3AF",
+                fontSize: 13, cursor: "pointer",
+              }}>
                 Forgot password?
               </button>
             </>
           )}
           {mode !== "login" && (
-            <button onClick={() => { setMode("login"); setError(""); setInfo(""); }}
-              style={{ background: "none", border: "none", color: "#00F5FF", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
-              Back to sign in
+            <button onClick={() => { setMode("login"); setError(""); setInfo(""); }} style={{
+              background: "none", border: "none", color: "#2563EB",
+              fontSize: 14, cursor: "pointer", fontWeight: 600,
+            }}>
+              ← Back to sign in
             </button>
           )}
         </div>
+      </div>
+
+      {/* Footer flavour */}
+      <div style={{ marginTop: 24, color: "#ffffff55", fontSize: 12, textAlign: "center" }}>
+        🇳🇬 🇮🇳 🇺🇸 🇩🇪 🇧🇷 🇯🇵 🇦🇺 — 40 countries to conquer
       </div>
     </div>
   );
