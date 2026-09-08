@@ -37,6 +37,8 @@ export default function LobbyPage({ session, joinMode }) {
 
   useEffect(() => {
     loadMyGames();
+    // Silently purge rooms inactive for 2+ hours
+    supabase.rpc("delete_stale_rooms").catch(() => {});
   }, []);
 
   async function loadMyGames() {
