@@ -116,11 +116,11 @@ export default function LobbyPage({ session, joinMode }) {
     if (!code) return;
     setLoading(true); setError("");
 
-    // Find room whose ID starts with this code (case-insensitive prefix)
+    // UUID columns can't use ilike directly — cast to text via PostgREST
     const { data: rooms, error: fetchErr } = await supabase
       .from("game_rooms")
       .select("*")
-      .ilike("id", `${code.toLowerCase()}%`)
+      .filter("id::text", "ilike", `${code.toLowerCase()}%`)
       .limit(1);
 
     if (fetchErr || !rooms?.length) { setError("Room not found. Check the code and try again."); setLoading(false); return; }
