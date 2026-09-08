@@ -26,6 +26,8 @@ export default function LobbyPage({ session, joinMode }) {
   const [error, setError] = useState("");
   const [myGames, setMyGames] = useState([]);
   const [showShareModal, setShowShareModal] = useState(null);
+  const [localSetup, setLocalSetup] = useState(false);
+  const [p2Name, setP2Name] = useState("");
 
   const myName = session.user.user_metadata?.display_name ||
     session.user.email.split("@")[0];
@@ -176,6 +178,24 @@ export default function LobbyPage({ session, joinMode }) {
           <span style={{ fontSize: 28 }}>🌍</span>
           {loading ? "Creating game…" : "Create New Game"}
           <span style={{ fontSize: 28 }}>→</span>
+        </button>
+      </div>
+
+      {/* SAME DEVICE 2P */}
+      <div style={{ width: "100%", maxWidth: 440, marginBottom: 16, animation: "fadeUp .48s ease-out" }}>
+        <button onClick={() => { setP2Name(""); setLocalSetup(true); }} style={{
+          width: "100%", padding: "16px",
+          background: "#ffffff18", backdropFilter: "blur(10px)",
+          border: "2px solid #ffffff40",
+          borderRadius: 20,
+          fontSize: 16, fontWeight: 800, cursor: "pointer",
+          color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+          transition: "all .2s",
+        }}>
+          <span style={{ fontSize: 24 }}>👥</span>
+          Same Device (2 Players)
+          <span style={{ fontSize: 16, opacity: .7 }}>→</span>
         </button>
       </div>
 
@@ -331,6 +351,95 @@ export default function LobbyPage({ session, joinMode }) {
               boxShadow: "0 4px 20px #15803D44",
             }}>
               🌍 Go to Game Board →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* LOCAL 2P SETUP MODAL */}
+      {localSetup && (
+        <div style={{
+          position: "fixed", inset: 0, background: "#00000066",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 500, padding: 20, backdropFilter: "blur(6px)",
+        }}>
+          <div style={{
+            background: "#FFFFFF", borderRadius: 24, padding: "32px 28px",
+            maxWidth: 360, width: "100%",
+            boxShadow: "0 24px 80px #00000033",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>👥</div>
+            <h2 style={{ color: "#111827", fontSize: 20, fontWeight: 900, marginBottom: 6 }}>
+              Same Device
+            </h2>
+            <p style={{ color: "#6B7280", fontSize: 13, marginBottom: 24 }}>
+              Both players share one screen.<br/>A pass screen hides the board between turns.
+            </p>
+
+            {/* P1 */}
+            <div style={{ textAlign: "left", marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#DC2626", letterSpacing: 1, marginBottom: 4 }}>
+                👑 PLAYER 1
+              </div>
+              <input
+                type="text" value={myName} readOnly
+                style={{
+                  width: "100%", padding: "13px 16px",
+                  background: "#FEF2F2", border: "2px solid #FECACA",
+                  borderRadius: 12, color: "#374151", fontSize: 15,
+                  fontWeight: 700, outline: "none",
+                }}
+              />
+            </div>
+
+            {/* P2 */}
+            <div style={{ textAlign: "left", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: 1, marginBottom: 4 }}>
+                🚢 PLAYER 2
+              </div>
+              <input
+                type="text"
+                placeholder="Enter Player 2 name"
+                value={p2Name}
+                onChange={e => setP2Name(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && p2Name.trim()) {
+                    navigate(`/local?p1=${encodeURIComponent(myName)}&p2=${encodeURIComponent(p2Name.trim())}`);
+                  }
+                }}
+                autoFocus
+                style={{
+                  width: "100%", padding: "13px 16px",
+                  background: "#EFF6FF", border: "2px solid #BFDBFE",
+                  borderRadius: 12, color: "#374151", fontSize: 15,
+                  fontWeight: 700, outline: "none",
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+
+            <button
+              disabled={!p2Name.trim()}
+              onClick={() => navigate(`/local?p1=${encodeURIComponent(myName)}&p2=${encodeURIComponent(p2Name.trim())}`)}
+              style={{
+                width: "100%", padding: "15px",
+                background: p2Name.trim() ? "#15803D" : "#E5E7EB",
+                color: p2Name.trim() ? "#fff" : "#9CA3AF",
+                border: "none", borderRadius: 50,
+                fontSize: 16, fontWeight: 900,
+                cursor: p2Name.trim() ? "pointer" : "default",
+                boxShadow: p2Name.trim() ? "0 4px 20px #15803D44" : "none",
+                marginBottom: 10, transition: "all .2s",
+              }}
+            >
+              Start Local Game →
+            </button>
+            <button onClick={() => setLocalSetup(false)} style={{
+              background: "none", border: "none",
+              color: "#9CA3AF", fontSize: 13, cursor: "pointer",
+            }}>
+              Cancel
             </button>
           </div>
         </div>

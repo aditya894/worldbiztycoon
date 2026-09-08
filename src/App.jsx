@@ -53,6 +53,11 @@ export default function App() {
             <Game session={session} />
           </RequireAuth>
         } />
+        <Route path="/local" element={
+          <RequireAuth session={session}>
+            <Game session={session} localMode />
+          </RequireAuth>
+        } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

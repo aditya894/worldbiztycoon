@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "./supabase";
 import AdBanner from "./components/AdBanner";
 
@@ -360,15 +360,18 @@ const BG = {
 };
 
 // ── GAME COMPONENT ────────────────────────────────────────
-export default function Game({ session }) {
+export default function Game({ session, localMode }) {
   const { id: roomId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [room,      setRoom]      = useState(null);
-  const [gs,        setGs]        = useState(null);
-  const [myIdx,     setMyIdx]     = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [showShare, setShowShare] = useState(false);
+  const [room,        setRoom]       = useState(null);
+  const [gs,          setGs]         = useState(null);
+  const [myIdx,       setMyIdx]      = useState(null);
+  const [loading,     setLoading]    = useState(true);
+  const [showShare,   setShowShare]  = useState(false);
+  const [passScreen,  setPassScreen] = useState(null); // local mode: { name, color, icon }
+  const [localWinner, setLocalWinner]= useState(null); // local mode game over
 
   const [d1, setD1] = useState(1);
   const [d2, setD2] = useState(2);
@@ -399,6 +402,21 @@ export default function Game({ session }) {
 
   // ── LOAD ROOM ───────────────────────────────────────────
   useEffect(() => {
+    if (localMode) {
+      const p1 = searchParams.get("p1") || "Player 1";
+      const p2 = searchParams.get("p2") || "Player 2";
+      setGs({
+        players: [0, 1].map(i => ({
+          id: i, name: [p1, p2][i],
+          color: ["#DC2626", "#2563EB"][i],
+          icon: ["👑", "🚢"][i],
+          pos: 0, cash: 1500, props: [], jail: false, jailTurns: 0, bust: false,
+        })),
+        owners: {}, curP: 0, turn: 1,
+      });
+      setLoading(false);
+      return;
+    }
     async function load() {
       const { data, error } = await supabase
         .from("game_rooms").select("*").eq("id", roomId).single();
@@ -413,11 +431,11 @@ export default function Game({ session }) {
       setLoading(false);
     }
     load();
-  }, [roomId]);
+  }, [roomId, localMode]);
 
   // ── REALTIME ─────────────────────────────────────────────
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || localMode) return;
     const channel = supabase
       .channel(`room-${roomId}`)
       .on("postgres_changes", {
@@ -443,12 +461,35 @@ export default function Game({ session }) {
   }, [roomId]);
 
   async function saveState(nGs, status) {
+    if (localMode) {
+      setGs(nGs);
+      if (status === "finished") {
+        const w = nGs.players.find(p => !p.bust) || nGs.players[0];
+        setLocalWinner(w);
+      }
+      return;
+    }
     const upd = { game_state: nGs, updated_at: new Date().toISOString() };
     if (status) upd.status = status;
     await supabase.from("game_rooms").update(upd).eq("id", roomId);
   }
 
+  function advanceLocal(nGs) {
+    let next = (nGs.curP + 1) % 2;
+    while (nGs.players[next]?.bust) next = (next + 1) % 2;
+    const adv = { ...nGs, curP: next, turn: nGs.turn + (next <= nGs.curP ? 1 : 0) };
+    setGs(adv);
+    setRolled(false);
+    setBuyInfo(null);
+    setD1(1); setD2(2);
+    setLanded1(false); setLanded2(false);
+    // Show pass screen so next player can privately take the device
+    const np = adv.players[next];
+    setPassScreen({ name: np.name, color: np.color, icon: np.icon });
+  }
+
   async function saveAndAdvance(nGs) {
+    if (localMode) { advanceLocal(nGs); return; }
     let next = (nGs.curP + 1) % 2;
     while (nGs.players[next]?.bust) next = (next + 1) % 2;
     const adv = { ...nGs, curP: next, turn: nGs.turn + (next <= nGs.curP ? 1 : 0) };
@@ -463,7 +504,7 @@ export default function Game({ session }) {
 
   // ── ROLL ─────────────────────────────────────────────────
   function roll() {
-    if (rolling || rolled || buyInfo || cardModal || !gs) return;
+    if (rolling || rolled || buyInfo || cardModal || passScreen || !gs) return;
     const pid = gs.curP;
     if (pid !== myIdx) return;
     if (gs.players[pid].bust) return;
@@ -642,6 +683,80 @@ export default function Game({ session }) {
     </>
   );
 
+  // ── LOCAL GAME OVER ──────────────────────────────────────
+  if (localMode && localWinner) {
+    const p1 = gs?.players[0]; const p2 = gs?.players[1];
+    return (
+      <>
+        <style>{CSS}</style>
+        <div style={BG}>
+          <div style={{
+            background: "#fff", borderRadius: 28, padding: "40px 32px",
+            maxWidth: 380, width: "100%", textAlign: "center",
+            boxShadow: "0 24px 80px #00000033", animation: "fadeIn .5s ease-out",
+          }}>
+            <div style={{ fontSize: 72, marginBottom: 8 }}>🏆</div>
+            <h1 style={{ color: localWinner.color, fontSize: 28, fontWeight: 900, marginBottom: 4 }}>
+              {localWinner.name} Wins!
+            </h1>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: `${localWinner.color}15`, border: `2px solid ${localWinner.color}44`,
+              borderRadius: 50, padding: "8px 20px", margin: "12px 0 20px",
+            }}>
+              <span style={{ fontSize: 22 }}>{localWinner.icon}</span>
+              <span style={{ color: localWinner.color, fontSize: 18, fontWeight: 800 }}>{localWinner.name}</span>
+              <span style={{ color: "#6B7280", fontSize: 14 }}>${localWinner.cash}M</span>
+            </div>
+            {/* Final scoreboard */}
+            {[p1, p2].filter(Boolean).map(p => (
+              <div key={p.id} style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "8px 14px", marginBottom: 6,
+                background: p.bust ? "#FEF2F2" : "#F0FDF4",
+                borderRadius: 12, border: `1px solid ${p.bust ? "#FECACA" : "#BBF7D0"}`,
+              }}>
+                <span style={{ fontSize: 16 }}>{p.icon} <b style={{ color: p.color }}>{p.name}</b></span>
+                <span style={{ fontWeight: 900, color: p.bust ? "#DC2626" : "#15803D" }}>
+                  {p.bust ? "BUST" : `$${p.cash}M`}
+                </span>
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button onClick={() => {
+                const p1n = gs.players[0].name, p2n = gs.players[1].name;
+                setLocalWinner(null);
+                setGs({
+                  players: [0, 1].map(i => ({
+                    id: i, name: [p1n, p2n][i],
+                    color: ["#DC2626", "#2563EB"][i],
+                    icon: ["👑", "🚢"][i],
+                    pos: 0, cash: 1500, props: [], jail: false, jailTurns: 0, bust: false,
+                  })),
+                  owners: {}, curP: 0, turn: 1,
+                });
+                setRolled(false); setBuyInfo(null); setPassScreen(null);
+                setD1(1); setD2(2); setLog([]);
+              }} style={{
+                flex: 1, padding: "14px", background: localWinner.color, color: "#fff",
+                border: "none", borderRadius: 50, fontSize: 15, fontWeight: 900, cursor: "pointer",
+                boxShadow: `0 4px 20px ${localWinner.color}44`,
+              }}>
+                Play Again
+              </button>
+              <button onClick={() => navigate("/lobby")} style={{
+                flex: 1, padding: "14px", background: "#FFFFFF", color: "#374151",
+                border: "2px solid #E5E7EB", borderRadius: 50, fontSize: 14, fontWeight: 700, cursor: "pointer",
+              }}>
+                Lobby
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   // ── GAME OVER ────────────────────────────────────────────
   if (room?.status === "finished" && gs) {
     const w = gs.players.find(p => !p.bust) || gs.players[0];
@@ -693,7 +808,8 @@ export default function Game({ session }) {
 
   const cp = gs?.players[gs?.curP];
   const isMyTurn = gs?.curP === myIdx;
-  const canRoll = !rolling && !rolled && !buyInfo && !cardModal && !!gs && !cp?.bust && isMyTurn && room?.status === "active";
+  const canRoll = !rolling && !rolled && !buyInfo && !cardModal && !passScreen && !!gs && !cp?.bust
+    && (localMode ? true : (isMyTurn && room?.status === "active"));
   const opponentName = myIdx === 0 ? (room?.guest_name || "Opponent") : room?.host_name;
 
   return (
@@ -830,7 +946,9 @@ export default function Game({ session }) {
                   : !isMyTurn ? "#6B7280"
                   : "#9CA3AF",
               }}>
-                {room?.status === "waiting"
+                {localMode
+                  ? (canRoll ? "TAP TO ROLL" : rolling ? "Rolling..." : "Wait...")
+                  : room?.status === "waiting"
                   ? "Waiting for opponent..."
                   : canRoll ? "TAP TO ROLL"
                   : rolling ? "Rolling..."
@@ -987,6 +1105,47 @@ export default function Game({ session }) {
       )}
 
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
+
+      {/* ── PASS SCREEN (local 2P only) ─────────────────── */}
+      {localMode && passScreen && (
+        <div
+          onClick={() => setPassScreen(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 700,
+            background: `linear-gradient(160deg, ${passScreen.color} 0%, ${passScreen.color}cc 100%)`,
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            cursor: "pointer", userSelect: "none",
+          }}
+        >
+          <div style={{ textAlign: "center", color: "#fff", padding: "0 32px" }}>
+            <div style={{ fontSize: 88, marginBottom: 12, filter: "drop-shadow(0 4px 20px #00000044)" }}>
+              {passScreen.icon}
+            </div>
+            <div style={{
+              fontSize: 14, fontWeight: 600, opacity: .75,
+              letterSpacing: 2, marginBottom: 6, textTransform: "uppercase",
+            }}>
+              Pass the device to
+            </div>
+            <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 36 }}>
+              {passScreen.name}
+            </div>
+            <div style={{
+              background: "#ffffff22", backdropFilter: "blur(10px)",
+              border: "2px solid #ffffff55", borderRadius: 50,
+              padding: "18px 48px", fontSize: 18, fontWeight: 800, letterSpacing: .5,
+              boxShadow: "0 8px 32px #00000033",
+            }}>
+              Ready — Tap to Roll!
+            </div>
+            <div style={{ marginTop: 20, opacity: .5, fontSize: 12 }}>
+              (cover screen while handing over)
+            </div>
+          </div>
+        </div>
+      )}
+
       <AdBanner />
     </>
   );
