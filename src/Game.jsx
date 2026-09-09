@@ -506,7 +506,7 @@ export default function Game({ session, localMode }) {
   function roll() {
     if (rolling || rolled || buyInfo || cardModal || passScreen || !gs) return;
     const pid = gs.curP;
-    if (pid !== myIdx) return;
+    if (!localMode && pid !== myIdx) return;
     if (gs.players[pid].bust) return;
 
     const r1 = Math.ceil(Math.random() * 6), r2 = Math.ceil(Math.random() * 6);

@@ -40,7 +40,7 @@ export default function LobbyPage({ session, joinMode }) {
   useEffect(() => {
     loadMyGames();
     // Silently purge rooms inactive for 2+ hours
-    supabase.rpc("delete_stale_rooms").catch(() => {});
+    supabase.rpc("delete_stale_rooms").then(null, () => {});
   }, []);
 
   async function loadMyGames() {
@@ -69,10 +69,14 @@ export default function LobbyPage({ session, joinMode }) {
     setLoading(true); setError("");
     const { data: room, error: fetchErr } = await supabase
       .from("game_rooms").select("*").eq("id", roomId).single();
-    if (fetchErr || !room) { setError("Room not found."); setLoading(false); return; }
+    if (fetchErr || !room) {
+      setError("This invite link has expired or the room was not found. Ask the host to create a new game.");
+      setLoading(false); return;
+    }
     if (room.host_id === uid) { navigate(`/game/${room.id}`); return; }
-    if (room.guest_id && room.guest_id !== uid) { setError("Room is full."); setLoading(false); return; }
-    if (room.status === "finished") { setError("This game has ended."); setLoading(false); return; }
+    if (room.guest_id && room.guest_id !== uid) { setError("This game is already full."); setLoading(false); return; }
+    if (room.status === "finished") { setError("This game has already ended."); setLoading(false); return; }
+    if (!room.game_state?.players) { setError("Game data is missing. Ask the host to create a new game."); setLoading(false); return; }
 
     const updatedGs = {
       ...room.game_state,
