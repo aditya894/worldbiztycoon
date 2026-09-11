@@ -1146,7 +1146,7 @@ export default function Game({ session, localMode }) {
         </div>
       )}
 
-      <AdBanner />
+      {!passScreen && <AdBanner />}
     </>
   );
 }
